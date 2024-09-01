@@ -1,12 +1,12 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-// Replace these with your mobile hotspot credentials
 const char* ssid = "OnePlus Nord CE 3 Lite 5G";
 const char* password = "s3v2ku4x";
-
-// Replace with your MQTT broker address
 const char* mqtt_server = "192.168.108.55";
+
+// Declare the global msg variable
+String msg = "Hello from ESP32";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -46,17 +46,6 @@ void reconnect() {
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
-      Serial.print(" | Error: ");
-      switch(client.state()) {
-        case -2: Serial.println("MQTT_CONNECT_FAILED"); break;
-        case -3: Serial.println("MQTT_CONNECT_TIMEOUT"); break;
-        case -4: Serial.println("MQTT_CONNECT_BAD_PROTOCOL"); break;
-        case -5: Serial.println("MQTT_CONNECT_BAD_CLIENT_ID"); break;
-        case -6: Serial.println("MQTT_CONNECT_UNAVAILABLE"); break;
-        case -7: Serial.println("MQTT_CONNECT_BAD_CREDENTIALS"); break;
-        case -8: Serial.println("MQTT_CONNECT_UNAUTHORIZED"); break;
-        default: Serial.println("Unknown error"); break;
-      }
       Serial.println(" try again in 5 seconds");
       delay(5000);
     }
@@ -64,13 +53,56 @@ void reconnect() {
 }
 
 void callback(char* topic, byte* message, unsigned int length) {
-String messageTemp;
+    String messageTemp;
 
-Serial.print("\n");
-  for (int i = 0; i < length; i++) {
-    messageTemp += (char)message[i];
-  }
+    // Build the message string from the byte array
+    for (int i = 0; i < length; i++) {
+        messageTemp += (char)message[i];  // Append each character to messageTemp
+    }
+
+    // Debug print for the received message
+    Serial.print("Received message: ");
     Serial.println(messageTemp);
+
+    // Convert global msg to char array for comparison
+    char msgArray[msg.length() + 1];
+    msg.toCharArray(msgArray, msg.length() + 1);
+
+    // Convert messageTemp to char array for comparison
+    char str[messageTemp.length() + 1];
+    messageTemp.toCharArray(str, messageTemp.length() + 1);
+
+    // Implement string comparison logic
+    int len1 = strlen(msgArray);
+    int len2 = strlen(str);
+    int i = 0, j = 0, k = 0;
+    char matchedTopic[100];
+
+    while (i < len2) {
+        if (str[i] == msgArray[j]) {
+            matchedTopic[k] = str[i];
+            k++;
+            j++;
+            if (j == len1) {  // If all characters of msg have been matched
+                break;
+            }
+        } else {
+            j = 0;  // Reset j if characters don't match
+            k = 0;  // Reset k to start over in matchedTopic array
+        }
+        i++;
+    }
+
+    matchedTopic[k] = '\0';  // Null-terminate the matchedTopic string
+
+    // Check if the matchedTopic is empty (no match found)
+    if (strlen(matchedTopic) == 0) {
+   //     Serial.println("No match found, printing original message:");
+        Serial.println(messageTemp);  // Print original message if no match
+    } else {
+     //   Serial.println("Matched string:");
+       // Serial.println(matchedTopic);  // Print the matched string if found
+    }
 }
 
 void loop() {
@@ -79,10 +111,19 @@ void loop() {
   }
   client.loop();
 
+  // Check if data is available on the Serial Monitor
+  if (Serial.available() > 0) {
+    // Read the input from the Serial Monitor
+    msg = Serial.readStringUntil('\n'); // Read until newline character
+
+    // Print the updated msg for confirmation
+    Serial.print("Updated msg: ");
+    Serial.println(msg);
+  }
+
   static unsigned long lastMessage = 0;
   if (millis() - lastMessage > 5000) {
     lastMessage = millis();
-    String msg = "Hello from ESP32";
-    client.publish("test/topic", msg.c_str());
+    client.publish("test/topic", msg.c_str());  // Use global msg for publishing
   }
 }
