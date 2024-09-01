@@ -1,8 +1,11 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
+// Replace these with your network credentials
 const char* ssid = "OnePlus Nord CE 3 Lite 5G";
 const char* password = "s3v2ku4x";
+
+// Replace with your MQTT broker address
 const char* mqtt_server = "192.168.108.55";
 
 // Declare the global msg variable
